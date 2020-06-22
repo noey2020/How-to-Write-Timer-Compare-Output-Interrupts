@@ -17,7 +17,8 @@
 #define RCC                 ((RCC_TypeDef *) RCC_BASE)
 #define RCC_AHBENR_GPIOBEN  ((uint32_t)0x00000002)        /*!< GPIO port B clock enable */
 #define TIM4                ((TIM_TypeDef *) TIM4_BASE)
-#define GPIO_AFRL_AFRL2            ((uint32_t)0x00000F00)
+#define GPIO_AFRL_AFRL2     ((uint32_t)0x00000F00)
+#define GPIO_AF2            0x2
 
 void GPIO_Clock_Enable(){
 		// Enable clock to GPIO port B
@@ -26,12 +27,11 @@ void GPIO_Clock_Enable(){
 }
 
 void GPIO_Pin_Init(){
-		// Set pin 6 as general-purpose output
-		GPIOB->MODER &= ~(0x03<<(2*6));		// Mode mask
-		GPIOB->MODER |= 0x02<<(2*6);			// Set pin 6 as digital output
+		/* MODER6[1:0] involving bits 12 & 13. 0b0010(0x02): Alternate function mode */
+		GPIOB->MODER &= ~(0x03 << 12);			// Clear mode bits
+		GPIOB->MODER |= 0x02 << 12;					// Set pin PB.6 as alternate function
 	
-		// Set output type as push-pull
-		GPIOB->OTYPER &= ~(1<<6);
+		GPIOB->OTYPER &= ~(0x1<<6);					// Set PB.6 pin as push-pull output type	
 	
 		// Set pin 6 as alternative function 2 (TIM4). bit y = 6
 		// Bits 31:0 AFRLy: Alternate function selection for port x bit y (y = 0..7)
@@ -54,8 +54,11 @@ void GPIO_Pin_Init(){
   260 #define GPIO_AF12                       0xc
   261 #define GPIO_AF13                       0xd
   262 #define GPIO_AF14                       0xe
-  263 #define GPIO_AF15                       0xf */
-		GPIOB->AFR[0] |= 0x2 << (4*6);
+  263 #define GPIO_AF15                       0xf
+		PB.6 selects AFRL6[3:0] from AFRL register & involves bits 24 to 27 rm0038. From stm32l152rb datasheet page 44 table 9,
+		we choose AFIO2(PB6 alt func: TIM4_CH1) or 0010(0x02): AF2 alternate function. We borrow from libopencm3 define for AF2 */
+		GPIOB->AFR[0] &= ~0xF << (24);			// Clear bits 24-27
+		GPIOB->AFR[0] |= GPIO_AF2 << (24);	// Set 0x02 mask alternate function
 	
 		// Set IO output speed
 		GPIOB->OSPEEDR &= ~(0x03<<(2*6));
